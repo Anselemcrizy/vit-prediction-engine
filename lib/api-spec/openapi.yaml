@@ -64,6 +64,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /ticket:
+    post:
+      operationId: analyzeTicket
+      tags: [predictions]
+      summary: Analyze a multi-match ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  sport:
+                    type: string
+                    enum: [football, basketball, tennis]
+                  home:
+                    type: string
+                  away:
+                    type: string
+                  market:
+                    type: string
+                    enum: [home_win, draw, away_win, over_2_5, btts]
+                required: [sport, home, away, market]
+      responses:
+        "200":
+          description: Ticket analysis result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket_summary:
+                    type: object
+                    properties:
+                      total_matches:
+                        type: integer
+                      combined_probability:
+                        type: number
+                      combined_odds:
+                        type: number
+                      ticket_ev:
+                        type: number
+                      confidence:
+                        type: string
+                        enum: [HIGH, MEDIUM, LOW]
+                      risk:
+                        type: string
+                        enum: [LOW, MEDIUM, HIGH]
+                    required: [total_matches, combined_probability, combined_odds, ticket_ev, confidence, risk]
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        match:
+                          type: string
+                        market:
+                          type: string
+                        probability:
+                          type: number
+                        odds:
+                          type: number
+                        ev:
+                          type: number
+                        value:
+                          type: string
+                          enum: [GOOD, NO VALUE]
+                      required: [match, market, probability, odds, ev, value]
+      "400":
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
   /predictions/{id}:
     get:
       operationId: getPrediction

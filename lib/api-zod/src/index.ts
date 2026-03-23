@@ -1,2 +1,3 @@
 export * from "./generated/api";
-export * from "./generated/types";
+// Types are available in generated/types, but we avoid exporting them directly here because some names conflict with zod schema exports.
+// If you need typed interfaces, import from "@workspace/api-zod/generated/types" explicitly.

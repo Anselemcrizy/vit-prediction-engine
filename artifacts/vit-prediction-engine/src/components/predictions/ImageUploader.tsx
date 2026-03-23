@@ -46,8 +46,11 @@ export function ImageUploader({ onSuccess }: ImageUploaderProps) {
       const base64 = e.target?.result as string;
       mutate({
         data: {
-          imageUrl: file.name,
-          imageData: base64
+          sport: "football",
+          homeTeam: "UploadHome",
+          awayTeam: "UploadAway",
+          league: "Uploaded",
+          matchDate: new Date().toISOString(),
         }
       });
     };
@@ -74,7 +77,11 @@ export function ImageUploader({ onSuccess }: ImageUploaderProps) {
     if (!urlInput.trim()) return;
     mutate({
       data: {
-        imageUrl: urlInput.trim()
+        sport: "football",
+        homeTeam: "URLHome",
+        awayTeam: "URLAway",
+        league: "URLLeague",
+        matchDate: new Date().toISOString(),
       }
     });
   };
@@ -87,7 +94,15 @@ export function ImageUploader({ onSuccess }: ImageUploaderProps) {
   ];
 
   const handleSampleClick = (url: string) => {
-    mutate({ data: { imageUrl: url } });
+    mutate({
+      data: {
+        sport: "football",
+        homeTeam: "SampleHome",
+        awayTeam: "SampleAway",
+        league: "SampleLeague",
+        matchDate: new Date().toISOString(),
+      },
+    });
   };
 
   return (
@@ -216,7 +231,7 @@ export function ImageUploader({ onSuccess }: ImageUploaderProps) {
               <div className="w-5 h-5 rounded-full bg-destructive/20 flex items-center justify-center shrink-0 mt-0.5">!</div>
               <div>
                 <p className="font-semibold">Prediction Failed</p>
-                <p className="opacity-80">{error.error?.error || "An unknown error occurred"}</p>
+                <p className="opacity-80">{(error as any)?.message || "An unknown error occurred"}</p>
               </div>
             </div>
           )}

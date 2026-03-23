@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { AnalysisForm } from "@/components/predictions/AnalysisForm";
 import { PredictionDetails } from "@/components/predictions/PredictionDetails";
+import { TicketEditor } from "@/components/predictions/TicketEditor";
 import { usePredictionUI } from "@/hooks/use-prediction-ui";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -16,7 +17,9 @@ export default function Home() {
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-accent/20 blur-[120px] rounded-full pointer-events-none" />
         
-        <div className="min-h-full p-6 md:p-10 flex flex-col relative z-10">
+        <div className="min-h-full p-6 md:p-10 flex flex-col relative z-10 space-y-6">
+          <TicketEditor />
+
           <AnimatePresence mode="wait">
             {isFormOpen ? (
               <motion.div

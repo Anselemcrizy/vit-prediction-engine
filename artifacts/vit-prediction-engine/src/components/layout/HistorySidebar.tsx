@@ -70,25 +70,20 @@ export function HistorySidebar({ activeId, onSelect }: HistorySidebarProps) {
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
                 )}
                 
-                <div className="w-14 h-14 rounded-lg overflow-hidden bg-black/50 shrink-0 border border-white/10 relative">
-                  <img 
-                    src={p.imageData || p.imageUrl} 
-                    alt={p.topLabel} 
-                    className="w-full h-full object-cover"
-                    crossOrigin="anonymous"
-                  />
+                <div className="w-14 h-14 rounded-lg overflow-hidden bg-black/50 shrink-0 border border-white/10 relative flex items-center justify-center text-xs text-muted-foreground">
+                  {p.sport?.toUpperCase() || "N/A"}
                 </div>
                 
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                   <h4 className="font-semibold text-sm truncate capitalize text-foreground group-hover:text-primary transition-colors">
-                    {p.topLabel.split(',')[0]}
+                    {p.homeTeam} vs {p.awayTeam}
                   </h4>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={cn(
                       "text-xs font-mono px-1.5 py-0.5 rounded",
-                      p.topConfidence > 0.8 ? "bg-success/10 text-success" : "bg-secondary/10 text-secondary"
+                      p.bestBetConfidence > 0.8 ? "bg-success/10 text-success" : "bg-secondary/10 text-secondary"
                     )}>
-                      {(p.topConfidence * 100).toFixed(0)}%
+                      {(p.bestBetConfidence * 100).toFixed(0)}%
                     </span>
                     <span className="text-[10px] text-muted-foreground truncate">
                       {format(new Date(p.createdAt), 'MMM d')}
