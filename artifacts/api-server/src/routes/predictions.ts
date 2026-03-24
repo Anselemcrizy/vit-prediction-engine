@@ -29,7 +29,45 @@ router.post("/predictions", async (req, res): Promise<void> => {
 
   const { sport, homeTeam, awayTeam, league, matchDate } = parsed.data;
 
-  const result = await runVitAnalysis(sport as Sport, homeTeam, awayTeam);
+  const result = await runVitAnalysis(
+    sport as Sport,
+    homeTeam,
+    awayTeam,
+    league ?? "EPL",
+    2024 // Default season, can be made configurable later
+  );
+
+  console.log('POST /predictions: DATABASE_URL', process.env.DATABASE_URL);
+
+  if (!process.env.DATABASE_URL) {
+    console.log('No DB branch');
+    // Development mode: skip DB persistence when DATABASE_URL is not provided
+    res.status(201).json(
+      GetPredictionResponse.parse({
+        id: 0,
+        createdAt: new Date(),
+        sport,
+        homeTeam,
+        awayTeam,
+        league: league ?? null,
+        matchDate: matchDate ?? null,
+        homeWinProb: result.homeWinProb,
+        drawProb: result.drawProb,
+        awayWinProb: result.awayWinProb,
+        predictedHomeScore: result.predictedHomeScore,
+        predictedAwayScore: result.predictedAwayScore,
+        bestBet: result.bestBet,
+        bestBetEv: result.bestBetEv,
+        bestBetConfidence: result.bestBetConfidence,
+        valueRating: result.valueRating,
+        aiConsensus: result.aiConsensus,
+        marketPredictions: result.marketPredictions,
+        scoreSimulations: result.scoreSimulations,
+        processingTimeMs: result.processingTimeMs,
+      }),
+    );
+    return;
+  }
 
   const [prediction] = await db
     .insert(predictionsTable)

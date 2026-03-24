@@ -38,9 +38,10 @@ async def startup_event():
         print(f"Error initializing model: {e}")
 
 @app.on_event("shutdown")
-async def shutdown_event():
+def shutdown_event():
     """Clean up resources"""
-    await data_provider.close()
+    # No persistent session to close with the current data provider implementation
+    return None
 
 @app.get("/")
 def home():
@@ -52,7 +53,7 @@ async def run_prediction(request: PredictionRequest):
 
     try:
         # Get match data from Understat
-        match_data = await get_match_data(
+        match_data = get_match_data(
             request.home_team,
             request.away_team,
             request.league,

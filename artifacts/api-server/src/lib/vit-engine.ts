@@ -20,6 +20,8 @@ export interface ScoreSimulation {
 }
 
 export interface VitResult {
+  homeTeam: string;
+  awayTeam: string;
   homeWinProb: number;
   drawProb: number | null;
   awayWinProb: number;
@@ -48,11 +50,23 @@ interface PythonPredictResponse {
   processing_time_ms: number;
 }
 
-async function callPythonModel(sport: Sport, homeTeam: string, awayTeam: string): Promise<PythonPredictResponse> {
+async function callPythonModel(
+  sport: Sport,
+  homeTeam: string,
+  awayTeam: string,
+  league: string = "EPL",
+  season: number = 2024,
+): Promise<PythonPredictResponse> {
   const res = await fetch(`${PYTHON_SERVICE_URL}/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sport, home_team: homeTeam, away_team: awayTeam }),
+    body: JSON.stringify({
+      sport,
+      home_team: homeTeam,
+      away_team: awayTeam,
+      league,
+      season,
+    }),
     signal: AbortSignal.timeout(15000),
   });
 
@@ -250,10 +264,12 @@ export async function runVitAnalysis(
   sport: Sport,
   homeTeam: string,
   awayTeam: string,
+  league: string = "EPL",
+  season: number = 2024,
 ): Promise<VitResult> {
   const startTime = Date.now();
 
-  const python = await callPythonModel(sport, homeTeam, awayTeam);
+  const python = await callPythonModel(sport, homeTeam, awayTeam, league, season);
 
   const homeWinProb = round4(python.home_win);
   const awayWinProb = round4(python.away_win);
@@ -295,6 +311,8 @@ export async function runVitAnalysis(
   );
 
   return {
+    homeTeam,
+    awayTeam,
     homeWinProb,
     drawProb,
     awayWinProb,

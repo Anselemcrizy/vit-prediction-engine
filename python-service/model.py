@@ -149,9 +149,9 @@ class FootballPredictionModel:
         top_scores = sorted(score_counts.items(), key=lambda x: -x[1])[:10]
         score_simulations = [
             {
-                "home": h, 
-                "away": a, 
-                "probability": round(count / simulations, 4)
+                "home": int(h),
+                "away": int(a),
+                "probability": float(round(count / simulations, 4))
             }
             for (h, a), count in top_scores
         ]

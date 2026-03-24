@@ -1,56 +1,59 @@
-import asyncio
-import aiohttp
-from understat import Understat
+import requests
 import pandas as pd
 from typing import Dict, List, Optional
 import json
 import time
 from functools import lru_cache
+import re
+from understatapi import Understat
 
 class UnderstatDataProvider:
     def __init__(self):
-        self.session = None
-        self.understat = None
+        self.client = Understat()
         self._cache = {}
         self._cache_timeout = 3600  # 1 hour
-
-    async def _init_session(self):
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-            self.understat = Understat(self.session)
-
-    async def close(self):
-        if self.session:
-            await self.session.close()
 
     @lru_cache(maxsize=100)
     def _get_cache_key(self, league: str, season: int) -> str:
         return f"{league}_{season}"
 
-    async def get_league_matches(self, league: str, season: int) -> List[Dict]:
-        """Get all matches for a league season from Understat"""
-        await self._init_session()
+    def _parse_understat_embedded_json(self, html: str, variable_name: str) -> List[Dict]:
+        pattern = re.compile(rf"{variable_name}\s*=\s*JSON\.parse\('(.+?)'\);", re.DOTALL)
+        match = pattern.search(html)
+        if not match:
+            return []
 
+        data_json = match.group(1).encode('utf-8').decode('unicode_escape')
+        try:
+            data = json.loads(data_json)
+        except Exception:
+            return []
+
+        return data
+
+    def get_league_matches(self, league: str, season: int) -> List[Dict]:
+        """Get all matches for a league season from Understat"""
         cache_key = self._get_cache_key(league, season)
         current_time = time.time()
 
-        # Check cache
         if cache_key in self._cache:
             cached_data, timestamp = self._cache[cache_key]
             if current_time - timestamp < self._cache_timeout:
                 return cached_data
 
         try:
-            data = await self.understat.get_league_results(league, season)
-            self._cache[cache_key] = (data, current_time)
-            return data
+            # Use understatapi library
+            data = self.client.get_league_data(league.lower(), season)
+            matches = data.get('matches', [])
+            self._cache[cache_key] = (matches, current_time)
+            return matches
         except Exception as e:
             print(f"Error fetching Understat data: {e}")
             return []
 
-    async def get_team_stats(self, team_name: str, league: str, season: int) -> Optional[Dict]:
+    def get_team_stats(self, team_name: str, league: str, season: int) -> Optional[Dict]:
         """Get team statistics from Understat"""
-        matches = await self.get_league_matches(league, season)
+        matches = self.get_league_matches(league, season)
 
         team_matches = [
             match for match in matches
@@ -117,9 +120,9 @@ class UnderstatDataProvider:
             'defense_strength': xg_conceded / matches_played if matches_played > 0 else 1.0
         }
 
-    async def get_match_forecast(self, home_team: str, away_team: str, league: str, season: int) -> Optional[Dict]:
+    def get_match_forecast(self, home_team: str, away_team: str, league: str, season: int) -> Optional[Dict]:
         """Get Understat forecast for a specific match"""
-        matches = await self.get_league_matches(league, season)
+        matches = self.get_league_matches(league, season)
 
         # Find recent matches for these teams
         home_matches = [
@@ -159,12 +162,12 @@ class UnderstatDataProvider:
 # Global instance
 data_provider = UnderstatDataProvider()
 
-async def get_match_data(home_team: str, away_team: str, league: str = "EPL", season: int = 2024):
+def get_match_data(home_team: str, away_team: str, league: str = "EPL", season: int = 2024):
     """Get match data for prediction"""
     try:
         # Get team statistics
-        home_stats = await data_provider.get_team_stats(home_team, league, season)
-        away_stats = await data_provider.get_team_stats(away_team, league, season)
+        home_stats = data_provider.get_team_stats(home_team, league, season)
+        away_stats = data_provider.get_team_stats(away_team, league, season)
 
         if not home_stats or not away_stats:
             # Fallback to basic data if team not found
@@ -183,7 +186,7 @@ async def get_match_data(home_team: str, away_team: str, league: str = "EPL", se
             }
 
         # Get forecast data
-        forecast = await data_provider.get_match_forecast(home_team, away_team, league, season)
+        forecast = data_provider.get_match_forecast(home_team, away_team, league, season)
         forecast_win = forecast['home_win_forecast'] if forecast else 0.4
         forecast_draw = forecast['draw_forecast'] if forecast else 0.3
         forecast_loss = forecast['away_win_forecast'] if forecast else 0.3
