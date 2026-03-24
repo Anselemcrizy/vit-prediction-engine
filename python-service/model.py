@@ -93,6 +93,12 @@ class FootballPredictionModel:
         
         return self.simulate_match(home_xg, away_xg, simulations)
     
+    def predict(self, home_xg: float, away_xg: float, simulations: int = 50000) -> dict:
+        """
+        Legacy predict function for backward compatibility.
+        """
+        return self.simulate_match(home_xg, away_xg, simulations)
+    
     def simulate_match(self, home_xg: float, away_xg: float, 
                       simulations: int = 50000) -> dict:
         """
