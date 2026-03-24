@@ -2,22 +2,27 @@ import { useState } from "react";
 import { Button, Input, Badge } from "@/components/ui";
 import { Plus, Trash2, Search } from "lucide-react";
 
-type MarketOption = "home_win" | "draw" | "away_win" | "over_2_5" | "btts";
+type MarketOption = "home_win" | "draw" | "away_win" | "over_2_5" | "btts" | "player_rebounds_over" | "player_assists_over";
 
 type TicketFixture = {
   sport: "football" | "basketball" | "tennis";
   home: string;
   away: string;
   market: MarketOption;
+  player?: string;
+  line?: number;
 };
 
 type TicketMatchResult = {
   match: string;
   market: MarketOption;
+  player?: string;
+  line?: number;
   probability: number;
   odds: number;
   ev: number;
   value: "GOOD" | "NO VALUE";
+  insights: string[];
 };
 
 type TicketSummary = {
@@ -42,7 +47,18 @@ const marketLabels: Record<MarketOption, string> = {
   away_win: "Away Win",
   over_2_5: "Over 2.5",
   btts: "BTTS",
+  player_rebounds_over: "Player Rebounds Over",
+  player_assists_over: "Player Assists Over",
 };
+
+const nbaPlayers = [
+  "Luka Doncic",
+  "Domantas Sabonis",
+  "Nikola Jokic",
+  "Paolo Banchero",
+  "Darius Garland",
+  "Jalen Johnson"
+];
 
 export function TicketEditor() {
   const [fixtures, setFixtures] = useState<TicketFixture[]>([emptyFixture]);
@@ -101,7 +117,7 @@ export function TicketEditor() {
 
       <div className="space-y-3">
         {fixtures.map((fixture, idx) => (
-          <div key={`${fixture.home}-${fixture.away}-${idx}`} className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+          <div key={`${fixture.home}-${fixture.away}-${idx}`} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
             <div>
               <label className="text-xs uppercase text-muted-foreground">Sport</label>
               <select
@@ -140,6 +156,38 @@ export function TicketEditor() {
               </select>
             </div>
 
+            {fixture.market.startsWith("player_") && (
+              <>
+                <div>
+                  <label className="text-xs uppercase text-muted-foreground">Player</label>
+                  <select
+                    className="w-full h-10 rounded-md border border-input bg-background/50 px-3 text-sm"
+                    value={fixture.player || ""}
+                    onChange={(e) => updateFixture(idx, { player: e.target.value })}
+                  >
+                    <option value="">Select Player</option>
+                    {nbaPlayers.map((player) => (
+                      <option key={player} value={player}>
+                        {player}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase text-muted-foreground">Line</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-full h-10 rounded-md border border-input bg-background/50 px-3 text-sm"
+                    value={fixture.line || ""}
+                    onChange={(e) => updateFixture(idx, { line: parseFloat(e.target.value) || undefined })}
+                    placeholder="7.5"
+                  />
+                </div>
+              </>
+            )}
+
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -174,33 +222,67 @@ export function TicketEditor() {
       )}
 
       {results.length > 0 && (
-        <div className="mt-6 overflow-auto rounded-lg border border-white/10">
-          <table className="min-w-full text-left">
-            <thead className="bg-white/10">
-              <tr>
-                <th className="px-3 py-2">Match</th>
-                <th className="px-3 py-2">Market</th>
-                <th className="px-3 py-2">Probability</th>
-                <th className="px-3 py-2">Odds</th>
-                <th className="px-3 py-2">EV</th>
-                <th className="px-3 py-2">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((row) => (
-                <tr key={`${row.match}-${row.market}`} className="even:bg-white/5 odd:bg-transparent">
-                  <td className="px-3 py-2">{row.match}</td>
-                  <td className="px-3 py-2">{marketLabels[row.market]}</td>
-                  <td className="px-3 py-2">{(row.probability * 100).toFixed(1)}%</td>
-                  <td className="px-3 py-2">{row.odds.toFixed(2)}</td>
-                  <td className="px-3 py-2">{row.ev.toFixed(2)}</td>
-                  <td className="px-3 py-2">
-                    <Badge variant={row.value === "GOOD" ? "success" : "secondary"}>{row.value}</Badge>
-                  </td>
+        <div className="mt-6 space-y-4">
+          <div className="overflow-auto rounded-lg border border-white/10">
+            <table className="min-w-full text-left">
+              <thead className="bg-white/10">
+                <tr>
+                  <th className="px-3 py-2">Match</th>
+                  <th className="px-3 py-2">Market</th>
+                  <th className="px-3 py-2">Player</th>
+                  <th className="px-3 py-2">Line</th>
+                  <th className="px-3 py-2">Probability</th>
+                  <th className="px-3 py-2">Odds</th>
+                  <th className="px-3 py-2">EV</th>
+                  <th className="px-3 py-2">Value</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {results.map((row) => (
+                  <tr key={`${row.match}-${row.market}-${row.player || ''}`} className="even:bg-white/5 odd:bg-transparent">
+                    <td className="px-3 py-2">{row.match}</td>
+                    <td className="px-3 py-2">{marketLabels[row.market]}</td>
+                    <td className="px-3 py-2">{row.player || '-'}</td>
+                    <td className="px-3 py-2">{row.line ? row.line.toFixed(1) : '-'}</td>
+                    <td className="px-3 py-2">{(row.probability * 100).toFixed(1)}%</td>
+                    <td className="px-3 py-2">{row.odds.toFixed(2)}</td>
+                    <td className="px-3 py-2">{row.ev.toFixed(2)}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant={row.value === "GOOD" ? "success" : "secondary"}>{row.value}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Deep Intelligence Reports */}
+          <div className="space-y-3">
+            <h4 className="text-lg font-semibold">Deep Intelligence Reports</h4>
+            {results.map((row, idx) => (
+              <div key={idx} className="p-4 bg-white/5 rounded-lg border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-semibold">
+                    {row.player} - {marketLabels[row.market]} {row.line ? row.line.toFixed(1) : ''}
+                  </h5>
+                  <Badge variant={row.value === "GOOD" ? "success" : "secondary"}>{row.value}</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mb-3 text-sm">
+                  <div>Probability: {(row.probability * 100).toFixed(1)}%</div>
+                  <div>Odds: {row.odds.toFixed(2)}</div>
+                  <div>EV: {row.ev.toFixed(2)}</div>
+                </div>
+                <div className="space-y-1">
+                  {row.insights.map((insight, i) => (
+                    <div key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                      <div className="w-1 h-1 bg-primary rounded-full"></div>
+                      {insight}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

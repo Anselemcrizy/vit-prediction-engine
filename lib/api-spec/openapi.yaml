@@ -87,7 +87,11 @@ paths:
                     type: string
                   market:
                     type: string
-                    enum: [home_win, draw, away_win, over_2_5, btts]
+                    enum: [home_win, draw, away_win, over_2_5, btts, player_rebounds_over, player_assists_over]
+                  player:
+                    type: string
+                  line:
+                    type: number
                 required: [sport, home, away, market]
       responses:
         "200":
@@ -124,6 +128,10 @@ paths:
                           type: string
                         market:
                           type: string
+                        player:
+                          type: string
+                        line:
+                          type: number
                         probability:
                           type: number
                         odds:
@@ -133,6 +141,10 @@ paths:
                         value:
                           type: string
                           enum: [GOOD, NO VALUE]
+                        insights:
+                          type: array
+                          items:
+                            type: string
                       required: [match, market, probability, odds, ev, value]
       "400":
         description: Invalid request

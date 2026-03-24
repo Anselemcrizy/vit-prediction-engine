@@ -78,22 +78,27 @@ router.get("/predictions/:id", async (req, res): Promise<void> => {
   res.json(GetPredictionResponse.parse(prediction));
 });
 
-type TicketFixtureMarket = "home_win" | "draw" | "away_win" | "over_2_5" | "btts";
+type TicketFixtureMarket = "home_win" | "draw" | "away_win" | "over_2_5" | "btts" | "player_rebounds_over" | "player_assists_over";
 
 type TicketFixture = {
   sport: Sport;
   home: string;
   away: string;
   market: TicketFixtureMarket;
+  player?: string;
+  line?: number;
 };
 
 type TicketMatchResult = {
   match: string;
   market: TicketFixtureMarket;
+  player?: string;
+  line?: number;
   probability: number;
   odds: number;
   ev: number;
   value: "GOOD" | "NO VALUE";
+  insights: string[];
 };
 
 type TicketSummary = {
@@ -111,6 +116,127 @@ function round2(value: number): number {
 
 function round4(value: number): number {
   return Math.round(value * 10000) / 10000;
+}
+
+// Player stats database (mock data for now)
+const playerStats: Record<string, {
+  avg_rebounds: number;
+  avg_assists: number;
+  std_dev_rebounds: number;
+  std_dev_assists: number;
+  minutes: number;
+  usage_rate: number;
+  team: string;
+}> = {
+  "Luka Doncic": {
+    avg_rebounds: 8.3,
+    avg_assists: 7.8,
+    std_dev_rebounds: 2.1,
+    std_dev_assists: 2.5,
+    minutes: 36,
+    usage_rate: 32,
+    team: "Dallas Mavericks"
+  },
+  "Domantas Sabonis": {
+    avg_rebounds: 12.1,
+    avg_assists: 6.2,
+    std_dev_rebounds: 2.8,
+    std_dev_assists: 1.9,
+    minutes: 35,
+    usage_rate: 25,
+    team: "Sacramento Kings"
+  },
+  "Nikola Jokic": {
+    avg_rebounds: 11.5,
+    avg_assists: 7.2,
+    std_dev_rebounds: 2.5,
+    std_dev_assists: 2.1,
+    minutes: 34,
+    usage_rate: 28,
+    team: "Denver Nuggets"
+  },
+  "Paolo Banchero": {
+    avg_rebounds: 6.8,
+    avg_assists: 4.1,
+    std_dev_rebounds: 1.8,
+    std_dev_assists: 1.5,
+    minutes: 33,
+    usage_rate: 22,
+    team: "Orlando Magic"
+  },
+  "Darius Garland": {
+    avg_rebounds: 2.5,
+    avg_assists: 6.8,
+    std_dev_rebounds: 1.2,
+    std_dev_assists: 2.2,
+    minutes: 32,
+    usage_rate: 24,
+    team: "Cleveland Cavaliers"
+  },
+  "Jalen Johnson": {
+    avg_rebounds: 7.2,
+    avg_assists: 2.8,
+    std_dev_rebounds: 2.0,
+    std_dev_assists: 1.1,
+    minutes: 30,
+    usage_rate: 18,
+    team: "Atlanta Hawks"
+  }
+};
+
+// Normal distribution CDF approximation
+function normalCDF(x: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp(-x * x / 2);
+  const prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - prob : prob;
+}
+
+function calculatePlayerPropProbability(
+  player: string,
+  market: "player_rebounds_over" | "player_assists_over",
+  line: number,
+  opponent: string
+): { probability: number; insights: string[] } {
+  const stats = playerStats[player];
+  if (!stats) {
+    return { probability: 0.5, insights: ["Player stats not available"] };
+  }
+
+  const isRebounds = market === "player_rebounds_over";
+  const mean = isRebounds ? stats.avg_rebounds : stats.avg_assists;
+  const std = isRebounds ? stats.std_dev_rebounds : stats.std_dev_assists;
+
+  // Context adjustments
+  let adjustedMean = mean;
+
+  // Pace factor (simplified)
+  const paceFactor = opponent.includes("Lakers") || opponent.includes("Warriors") ? 0.05 : -0.02;
+  adjustedMean *= (1 + paceFactor);
+
+  // Opponent factor (simplified)
+  const opponentReboundRank = opponent.includes("Kings") || opponent.includes("Nuggets") ? 0.08 : -0.03;
+  if (isRebounds) {
+    adjustedMean *= (1 + opponentReboundRank);
+  }
+
+  // Minutes projection (simplified)
+  const minutesProjection = Math.min(stats.minutes, 38);
+  adjustedMean *= (minutesProjection / stats.minutes);
+
+  // Calculate probability
+  const z = (line - adjustedMean) / std;
+  const probability = 1 - normalCDF(z);
+
+  // Generate insights
+  const insights = [
+    `Averaging ${mean.toFixed(1)} ${isRebounds ? 'rebounds' : 'assists'} this season`,
+    `Projected ${minutesProjection.toFixed(0)} minutes in this matchup`,
+    `${paceFactor > 0 ? 'High' : 'Low'} pace matchup (${(paceFactor * 100).toFixed(0)}% adjustment)`,
+    `${isRebounds ? 'Opponent ranks ' + (opponentReboundRank > 0 ? 'poor' : 'strong') + ' in rebounding allowed' : 'Usage rate: ' + stats.usage_rate + '%'}`
+  ];
+
+  return { probability: round4(probability), insights };
 }
 
 function getMarketProbability(prediction: any, market: TicketFixtureMarket): number {
@@ -192,7 +318,26 @@ router.post("/ticket", async (req, res): Promise<void> => {
 
     predictions.forEach((prediction, index) => {
       const fixture = fixtures[index];
-      const prob = round2(getMarketProbability(prediction, fixture.market));
+      let prob: number;
+      let insights: string[] = [];
+
+      if (fixture.market.startsWith("player_")) {
+        if (!fixture.player || fixture.line === undefined) {
+          throw new Error(`Player props require player and line: ${JSON.stringify(fixture)}`);
+        }
+
+        const result = calculatePlayerPropProbability(
+          fixture.player,
+          fixture.market as "player_rebounds_over" | "player_assists_over",
+          fixture.line,
+          fixture.away === prediction.awayTeam ? fixture.home : fixture.away
+        );
+        prob = result.probability;
+        insights = result.insights;
+      } else {
+        prob = round2(getMarketProbability(prediction, fixture.market));
+      }
+
       const odds = round2(getMarketOdds(prediction, fixture.market, prob));
       const ev = round2(prob * odds - 1);
       const value = getValueLabel(ev);
@@ -203,10 +348,13 @@ router.post("/ticket", async (req, res): Promise<void> => {
       ticketResults.push({
         match: `${fixture.home} vs ${fixture.away}`,
         market: fixture.market,
+        player: fixture.player,
+        line: fixture.line,
         probability: prob,
         odds,
         ev,
         value,
+        insights,
       });
     });
 
