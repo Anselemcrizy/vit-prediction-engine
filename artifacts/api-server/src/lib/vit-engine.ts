@@ -103,10 +103,9 @@ function round4(v: number) {
 }
 
 function getValueRating(ev: number): string {
-  if (ev >= 0.20) return "STRONG VALUE";
-  if (ev >= 0.10) return "GOOD VALUE";
-  if (ev >= 0.03) return "MODERATE";
-  if (ev >= -0.05) return "LOW VALUE";
+  if (ev >= 0.07) return "STRONG VALUE";
+  if (ev >= 0.04) return "GOOD VALUE";
+  if (ev >= 0.02) return "LOW VALUE";
   return "NO VALUE";
 }
 
