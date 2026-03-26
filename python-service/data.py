@@ -5,11 +5,11 @@ import json
 import time
 from functools import lru_cache
 import re
-from understatapi import Understat
+from understatapi import UnderstatClient
 
 class UnderstatDataProvider:
     def __init__(self):
-        self.client = Understat()
+        self.client = UnderstatClient()
         self._cache = {}
         self._cache_timeout = 3600  # 1 hour
 
