@@ -160,11 +160,19 @@ class UnderstatDataProvider:
         }
 
 # Global instance
-data_provider = UnderstatDataProvider()
+try:
+    data_provider = UnderstatDataProvider()
+except Exception as e:
+    print(f"Warning: Failed to initialize Understat data provider: {e}")
+    data_provider = None
 
 def get_match_data(home_team: str, away_team: str, league: str = "EPL", season: int = 2024):
     """Get match data for prediction"""
     try:
+        # Return fallback if data provider not initialized
+        if data_provider is None:
+            raise Exception("Data provider not initialized")
+            
         # Get team statistics
         home_stats = data_provider.get_team_stats(home_team, league, season)
         away_stats = data_provider.get_team_stats(away_team, league, season)

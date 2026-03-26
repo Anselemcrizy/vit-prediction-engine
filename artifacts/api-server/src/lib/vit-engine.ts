@@ -57,25 +57,41 @@ async function callPythonModel(
   league: string = "EPL",
   season: number = 2024,
 ): Promise<PythonPredictResponse> {
-  const res = await fetch(`${PYTHON_SERVICE_URL}/predict`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  try {
+    console.log(`Calling Python service at ${PYTHON_SERVICE_URL}/predict`, {
       sport,
-      home_team: homeTeam,
-      away_team: awayTeam,
+      homeTeam,
+      awayTeam,
       league,
       season,
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
+    });
+    
+    const res = await fetch(`${PYTHON_SERVICE_URL}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sport,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        league,
+        season,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Python model service error ${res.status}: ${text}`);
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`Python service error ${res.status}:`, text);
+      throw new Error(`Python model service error ${res.status}: ${text}`);
+    }
+
+    const data = await res.json() as PythonPredictResponse;
+    console.log("Python service response:", data);
+    return data;
+  } catch (error) {
+    console.error("Error calling Python service:", error);
+    throw error;
   }
-
-  return res.json() as Promise<PythonPredictResponse>;
 }
 
 function round2(v: number) {

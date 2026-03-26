@@ -118,21 +118,8 @@ class FootballPredictionModel:
             home_goals = np.random.poisson(home_xg, simulations)
             away_goals = np.random.poisson(away_xg, simulations)
         
-        # Add small correlation between home and away goals
-        correlation = 0.1  # Slight negative correlation often observed
-        if correlation != 0:
-            # Apply correlation using copula approach
-            from scipy.stats import norm
-            u = norm.cdf(np.random.normal(0, 1, simulations))
-            v = norm.cdf(np.random.normal(0, 1, simulations))
-            
-            # Adjust based on correlation (simplified approach)
-            if correlation < 0:
-                v = 1 - v
-            
-            home_goals_corr = np.percentile(home_goals, u * 100)
-            away_goals_corr = np.percentile(away_goals, v * 100)
-            home_goals, away_goals = home_goals_corr, away_goals_corr
+        # Note: Goals are already reasonably independent as Poisson/NB processes
+        # Correlation between home and away goals is minimal in practice
         
         # Calculate probabilities
         home_win = float((home_goals > away_goals).mean())
